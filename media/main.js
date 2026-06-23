@@ -28,7 +28,7 @@
   const HUB_ID = "__hub__";
   const MEDIA = (typeof window !== "undefined" && window.__mediaBase) || "media";
   // generated character clips per pose (others fall back to the SVG character)
-  const VIDEO_BY_POSE = { type: "working.mp4", sit: "chilling.mp4" };
+  const VIDEO_BY_POSE = { type: "working.webp", sit: "chilling.webp" };
 
   // little animated character drawn inside each orb (pose set via [data-pose])
   const AVATAR_SVG =
@@ -207,7 +207,7 @@
     el.dataset.id = node.id;
     el.style.transform = "translate3d(-9999px,-9999px,0)"; // hidden until first layout frame
     const inner = node.kind === "hub" ? HUB_SVG : AVATAR_SVG;
-    const vid = node.kind === "hub" ? "" : '<video class="orb-video" muted loop playsinline></video>';
+    const vid = node.kind === "hub" ? "" : '<img class="orb-video" alt="" />';
     el.innerHTML =
       '<div class="orb">' + vid + inner + "</div>" +
       '<div class="caption">' +
@@ -231,21 +231,19 @@
     const pose = effectivePose(el, node);
     el.dataset.pose = pose;
 
-    // video character for poses that have a clip; SVG fallback otherwise
-    const video = el.querySelector(".orb-video");
-    if (video) {
+    // animated character (WebP) for poses that have a clip; SVG fallback otherwise
+    const media = el.querySelector(".orb-video");
+    if (media) {
       const orb = el.querySelector(".orb");
       const vfile = VIDEO_BY_POSE[pose];
       if (vfile) {
-        if (video.dataset.file !== vfile) {
-          video.src = MEDIA + "/avatars/" + vfile;
-          video.dataset.file = vfile;
+        if (media.dataset.file !== vfile) {
+          media.src = MEDIA + "/avatars/" + vfile;
+          media.dataset.file = vfile;
         }
         orb.classList.add("has-video");
-        if (video.paused) video.play().catch(() => {});
       } else {
         orb.classList.remove("has-video");
-        if (!video.paused) video.pause();
       }
     }
 

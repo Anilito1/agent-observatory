@@ -13,7 +13,7 @@ async function main() {
     outfile: "dist/extension.js",
     external: ["vscode"],
     sourcemap: !production,
-    minify: production,
+    minify: false, // keep readable so the Marketplace scanner doesn't flag it as obfuscated
     logLevel: "info",
   });
   if (watch) {
