@@ -1,7 +1,7 @@
 {
-  "name": "claude-agent-observatory",
-  "displayName": "Claude Agent Observatory",
-  "description": "See your Claude Code agents working — live. Sessions & sub-agents as animated characters, with live token usage and $ cost.",
+  "name": "coding-agent-observatory",
+  "displayName": "Coding Agent Observatory",
+  "description": "See your AI coding agents working — live. Sessions and sub-agents as animated characters, with live token usage and cost.",
   "version": "0.1.0",
   "publisher": "Anilito1",
   "license": "MIT",
@@ -15,7 +15,7 @@
     "vscode": "^1.85.0"
   },
   "categories": ["Visualization", "Other"],
-  "keywords": ["claude code", "agents", "monitor", "tokens", "ai"],
+  "keywords": ["ai", "agents", "monitor", "tokens", "dashboard"],
   "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {

@@ -1,8 +1,8 @@
-# Claude Agent Observatory
+# Coding Agent Observatory
 
-**See your Claude Code agents working — live.**
+**See your AI coding agents working — live.**
 
-Every Claude Code session and sub-agent shows up as a little animated character, so you can tell at a glance **who's working, on what, how many tokens it's using, and what it costs.**
+Every coding-agent session and sub-agent shows up as a little animated character, so you can tell at a glance **who's working, on what, how many tokens it's using, and what it costs.**
 
 ## What it does
 
@@ -12,15 +12,15 @@ Every Claude Code session and sub-agent shows up as a little animated character,
 - 🔎 **Click any character** for the full story: what it's doing, its cost breakdown, and a live feed of its latest actions.
 - 🎮 **Take over** any session in one click — jump back in to steer it or stop it.
 - 🌐 **English or French**, your choice.
-- 🔒 **100 % local** — it just reads Claude Code's own logs on your machine. Nothing leaves your computer, and no API key is needed.
+- 🔒 **100 % local** — it reads the agent logs already on your machine. Nothing leaves your computer, and no API key is needed.
 
 ## Getting started
 
 1. Install the extension.
-2. Click the **Agent Observatory** icon in the activity bar.
+2. Click the **Observatory** icon in the activity bar.
 
-Your running Claude Code sessions appear automatically. That's it.
+Your running agent sessions appear automatically. That's it.
 
 ---
 
-MIT · built for Claude Code · screenshots and source: https://github.com/Anilito1/agent-observatory
+MIT · source: https://github.com/Anilito1/agent-observatory
