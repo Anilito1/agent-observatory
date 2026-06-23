@@ -93,6 +93,13 @@ button.toggle.on::before {
   background: var(--green); margin-right: 5px; vertical-align: middle;
   box-shadow: 0 0 6px rgba(111,207,151,0.6);
 }
+.period-select {
+  font: inherit; font-size: 11px; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 5px 8px; cursor: pointer;
+}
+.period-select:hover { border-color: var(--border-2); }
+.period-select option { background: #14161a; color: var(--text); }
 
 /* ---------- Stage ---------- */
 #stage { position: relative; flex: 1; overflow: auto; padding: var(--s5) var(--s4) 64px; }

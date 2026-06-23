@@ -20,6 +20,13 @@ export interface FileAggregate {
   lastWasToolUse: boolean;
   capped: boolean; // initial read was truncated to the tail of a large file -> totals are partial
   recentTail: TailLine[]; // rolling window of recent human-readable events
+  events: UsageEvent[]; // per-assistant-message usage, for period filtering
+}
+
+export interface UsageEvent {
+  ts: number;
+  model: string;
+  t: TokenTotals;
 }
 
 const TAIL_MAX = 60;
@@ -43,6 +50,7 @@ export function createAggregate(): FileAggregate {
     lastWasToolUse: false,
     capped: false,
     recentTail: [],
+    events: [],
   };
 }
 
@@ -147,8 +155,10 @@ export function processLine(agg: FileAggregate, o: any): void {
     if (o.cwd) agg.cwd = o.cwd;
     if (o.gitBranch) agg.gitBranch = o.gitBranch;
     if (msg.usage) {
-      addTotals(agg.tokens, extractUsage(msg.usage));
+      const u = extractUsage(msg.usage);
+      addTotals(agg.tokens, u);
       agg.messageCount++;
+      agg.events.push({ ts: ts || agg.lastTs || Date.now(), model: msg.model || agg.model, t: u });
     }
     const content = Array.isArray(msg.content) ? msg.content : [];
     let lastText = "";

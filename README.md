@@ -25,6 +25,8 @@ Tout est **local** : aucune donnée ne sort de ta machine, aucune clé API requi
 - 🫧 **Orbes flottants reliés en arbre** : une racine « Ma machine » → les sessions → leurs sous-agents, connectés par des liens animés (le flux « coule » sur les liens des agents actifs). Tout flotte doucement et reste toujours connecté.
 - 🧑‍💻 **Personnage animé dans chaque orbe** selon l'état : tape sur un laptop quand ça travaille, bulles de pensée quand ça réfléchit, assis quand ça attend, ✓ quand c'est fini.
 - 🖱️ **Déplaçables** : maintiens le clic sur un orbe pour le repositionner (il s'épingle). Un clic simple ouvre le détail ; cliquer « Ma machine » lance une nouvelle session.
+- ⏱️ **Période de calcul** : sélecteur Session (total) / Aujourd'hui / 24 h / 7 jours / 1 h — les tokens et le coût $ affichés correspondent à la période choisie (indiquée sous « coût »). Plus d'ambiguïté.
+- 🌐 **Français ou anglais** au choix (bouton FR/EN), mémorisé.
 - 💸 **Coût $ et tokens en direct**, qui défilent (compteurs tweenés). Total flotte agrégé dans la barre du haut.
 - 🔎 **Panneau détail** (clic sur une bulle) : décomposition coût / tokens, contexte (dossier, branche git, durée, nb de messages) et **flux en direct** des derniers événements.
 - ⛓️ **Filtre** « Ce projet » / « Tous » pour ne voir que les sessions du workspace courant.

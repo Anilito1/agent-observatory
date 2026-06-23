@@ -10,8 +10,14 @@ let watcher: FleetWatcher | undefined;
 let launcher: Launcher;
 const posters = new Set<(msg: OutboundMessage) => void>();
 let latest: FleetState | undefined;
+let extContext: vscode.ExtensionContext;
+let period = "session";
+let language = "fr";
 
 export function activate(context: vscode.ExtensionContext): void {
+  extContext = context;
+  period = context.globalState.get<string>("period", "session");
+  language = context.globalState.get<string>("language", "fr");
   launcher = new Launcher(() =>
     vscode.workspace.getConfiguration("claudeFleet").get<string>("claudeCommand", "claude")
   );
@@ -21,7 +27,7 @@ export function activate(context: vscode.ExtensionContext): void {
     onAttach: (post) => {
       posters.add(post);
       if (latest) post({ type: "state", state: latest });
-      post({ type: "config", workspaceCwd: workspaceCwd() });
+      post({ type: "config", workspaceCwd: workspaceCwd(), period, language });
     },
     onDetach: (post) => posters.delete(post),
   };
@@ -83,6 +89,7 @@ function startWatcher(context: vscode.ExtensionContext): void {
     pollIntervalMs: cfg.get<number>("pollIntervalMs", 1500),
     maxInitialBytes: 12 * 1024 * 1024,
     pricing,
+    period,
     managedSessionIds: () => launcher.managedSessionIds(),
     workspaceCwd: workspaceCwd(),
     onState: (state) => {
@@ -131,6 +138,16 @@ function handleInbound(msg: InboundMessage): void {
     }
     case "setFilter":
       // filtering is handled client-side in the webview
+      break;
+    case "setPeriod":
+      period = msg.period;
+      watcher?.setPeriod(period);
+      extContext.globalState.update("period", period);
+      break;
+    case "setLanguage":
+      language = msg.language;
+      extContext.globalState.update("language", language);
+      for (const post of posters) post({ type: "config", workspaceCwd: workspaceCwd(), period, language });
       break;
   }
 }

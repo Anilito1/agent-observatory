@@ -68,13 +68,15 @@ export type InboundMessage =
   | { type: "revealFolder"; filePath: string }
   | { type: "copyResume"; sessionId: string }
   | { type: "setFilter"; scope: "workspace" | "all" }
+  | { type: "setPeriod"; period: string }
+  | { type: "setLanguage"; language: string }
   | { type: "requestTail"; nodeId: string };
 
 // Messages: extension -> webview
 export type OutboundMessage =
   | { type: "state"; state: FleetState }
   | { type: "tail"; nodeId: string; lines: TailLine[] }
-  | { type: "config"; workspaceCwd: string | null };
+  | { type: "config"; workspaceCwd: string | null; period: string; language: string };
 
 export interface TailLine {
   role: "user" | "assistant" | "system";

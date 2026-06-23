@@ -47,14 +47,16 @@ export function buildHtml(webview: vscode.Webview, extensionUri: vscode.Uri): st
         <span class="brand-name">Claude Fleet</span>
       </div>
       <div class="stats">
-        <div class="stat"><span class="stat-val" id="stat-live">0</span><span class="stat-label">en direct</span></div>
-        <div class="stat"><span class="stat-val" id="stat-tokens">0</span><span class="stat-label">tokens</span></div>
-        <div class="stat cost"><span class="stat-val" id="stat-cost">$0.00</span><span class="stat-label">coût API</span></div>
+        <div class="stat"><span class="stat-val" id="stat-live">0</span><span class="stat-label" id="lbl-live">live</span></div>
+        <div class="stat"><span class="stat-val" id="stat-tokens">0</span><span class="stat-label" id="lbl-tokens">tokens</span></div>
+        <div class="stat cost"><span class="stat-val" id="stat-cost">$0.00</span><span class="stat-label" id="lbl-cost">cost</span></div>
       </div>
       <div class="actions">
-        <button id="mode-toggle" class="toggle on" title="Actives uniquement / inclure les récentes inactives">Actives</button>
-        <button id="filter-toggle" class="ghost" title="Basculer ce projet / tous">Tous</button>
-        <button id="btn-new" class="primary" title="Lancer une nouvelle session">+ Session</button>
+        <select id="period" class="period-select" title="Période de calcul tokens & coût"></select>
+        <button id="mode-toggle" class="toggle on"></button>
+        <button id="filter-toggle" class="ghost"></button>
+        <button id="btn-new" class="primary"></button>
+        <button id="lang-toggle" class="toggle" title="Langue / Language">FR</button>
       </div>
     </header>
     <div id="stage">

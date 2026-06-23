@@ -3,7 +3,8 @@ import * as path from "path";
 import * as os from "os";
 import { FleetNode, FleetState, FleetSummary, NodeStatus, TailLine } from "./types";
 import { FileAggregate, createAggregate, processLine, bestTitle } from "./parser";
-import { Pricing, modelFamily, sumTokens } from "./pricing";
+import { Pricing, modelFamily, sumTokens, emptyTotals, addTotals } from "./pricing";
+import { CostBreakdown, TokenTotals } from "./types";
 
 interface AgentMeta {
   agentType?: string;
@@ -30,6 +31,7 @@ export interface WatcherOptions {
   pollIntervalMs: number;
   maxInitialBytes: number;
   pricing: Pricing;
+  period: string; // 'session' | 'today' | '1h' | '24h' | '7d'
   managedSessionIds: () => Set<string>;
   workspaceCwd: string | null;
   onState: (state: FleetState) => void;
@@ -65,6 +67,25 @@ export class FleetWatcher {
 
   setWorkspaceCwd(cwd: string | null): void {
     this.opts.workspaceCwd = cwd;
+  }
+
+  setPeriod(period: string): void {
+    this.opts.period = period;
+    this.forceRefresh();
+  }
+
+  private periodSince(): number {
+    const p = this.opts.period;
+    const now = Date.now();
+    if (p === "today") {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      return d.getTime();
+    }
+    if (p === "1h") return now - 3_600_000;
+    if (p === "24h") return now - 86_400_000;
+    if (p === "7d") return now - 7 * 86_400_000;
+    return 0; // 'session' / 'all'
   }
 
   getTail(nodeId: string): TailLine[] {
@@ -257,8 +278,30 @@ export class FleetWatcher {
     return "done";
   }
 
+  // Sum tokens + cost over the events within the selected period (per-event model = accurate).
+  private aggregate(agg: FileAggregate, since: number): { tokens: TokenTotals; cost: CostBreakdown } {
+    if (since <= 0) {
+      // whole session: agg.tokens already holds the running total
+      return { tokens: agg.tokens, cost: this.opts.pricing.cost(agg.model, agg.tokens) };
+    }
+    const tokens = emptyTotals();
+    const cost: CostBreakdown = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0, total: 0 };
+    for (const e of agg.events) {
+      if (e.ts < since) continue;
+      addTotals(tokens, e.t);
+      const c = this.opts.pricing.cost(e.model, e.t);
+      cost.input += c.input;
+      cost.output += c.output;
+      cost.cacheWrite += c.cacheWrite;
+      cost.cacheRead += c.cacheRead;
+      cost.total += c.total;
+    }
+    return { tokens, cost };
+  }
+
   private emit(): void {
     const managed = this.opts.managedSessionIds();
+    const since = this.periodSince();
     const nodes: FleetNode[] = [];
 
     for (const t of this.trackers.values()) {
@@ -266,7 +309,7 @@ export class FleetWatcher {
       if (agg.messageCount === 0 && !agg.lastTs && !t.meta) continue;
 
       const status = this.statusOf(t.mtimeMs, agg.lastTs);
-      const cost = this.opts.pricing.cost(agg.model, agg.tokens);
+      const { tokens: periodTokens, cost } = this.aggregate(agg, since);
       const isAgent = t.kind === "agent";
       const folder = (agg.cwd || "").split(/[\\/]/).filter(Boolean).pop() || "";
 
@@ -295,7 +338,7 @@ export class FleetWatcher {
         working,
         activity,
         activityKind: agg.activityKind,
-        tokens: agg.tokens,
+        tokens: periodTokens,
         cost,
         messageCount: agg.messageCount,
         lastTs: agg.lastTs || t.mtimeMs,

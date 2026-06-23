@@ -14,6 +14,8 @@
   let showMode = "active"; // 'active' = only open/running sessions, 'recent' = include idle
   let selectedId = null;
   let drawerBuiltFor = null; // node id the drawer DOM was built for (avoid rebuilding -> avoid tail flicker)
+  let lang = "fr";
+  let period = "session";
 
   const bubbleCache = new Map(); // id -> .node element
   const linkCache = new Map(); // agentId -> <path>
@@ -64,13 +66,13 @@
   function sumTokens(t) { return t.input + t.output + t.cacheWrite5m + t.cacheWrite1h + t.cacheRead; }
   function timeAgo(ts) {
     const s = Math.floor((Date.now() - ts) / 1000);
-    if (s < 5) return "à l'instant";
+    if (s < 5) return lang === "en" ? "just now" : "à l'instant";
     if (s < 60) return s + " s";
     const m = Math.floor(s / 60);
     if (m < 60) return m + " min";
     const h = Math.floor(m / 60);
     if (h < 24) return h + " h";
-    return Math.floor(h / 24) + " j";
+    return Math.floor(h / 24) + (lang === "en" ? " d" : " j");
   }
   function esc(s) {
     return (s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -88,6 +90,68 @@
   function shortModel(m) {
     if (!m || m === "—") return "—";
     return m.replace(/^claude-/, "").replace(/-(\d{8})$/, "");
+  }
+
+  // ---------- i18n ----------
+  const I18N = {
+    live: { fr: "en direct", en: "live" },
+    tokens: { fr: "tokens", en: "tokens" },
+    cost: { fr: "coût", en: "cost" },
+    active: { fr: "Actives", en: "Active" },
+    recent: { fr: "Récentes", en: "Recent" },
+    all: { fr: "Tous", en: "All" },
+    thisProject: { fr: "Ce projet", en: "This project" },
+    newSession: { fr: "+ Session", en: "+ Session" },
+    emptyActiveTitle: { fr: "Aucune session ouverte", en: "No open session" },
+    emptyActiveDesc: { fr: "Les sessions Claude Code en cours d'exécution apparaîtront ici, en direct. Bascule sur « Récentes » pour revoir les sessions inactives.", en: "Running Claude Code sessions show here, live. Switch to “Recent” to see inactive ones." },
+    emptyRecentTitle: { fr: "Aucune session récente", en: "No recent session" },
+    emptyRecentDesc: { fr: "Lance une session Claude Code — elle apparaîtra ici.", en: "Start a Claude Code session — it will show up here." },
+    myMachine: { fr: "Ma machine", en: "My machine" },
+    session: { fr: "session", en: "session" },
+    liveWord: { fr: "en direct", en: "live" },
+    activity: { fr: "Activité", en: "Activity" },
+    apiCost: { fr: "Coût API", en: "API cost" },
+    input: { fr: "Input", en: "Input" },
+    output: { fr: "Output", en: "Output" },
+    cacheWrite: { fr: "Cache (écriture)", en: "Cache (write)" },
+    cacheRead: { fr: "Cache (lecture)", en: "Cache (read)" },
+    cacheWriteShort: { fr: "Cache write", en: "Cache write" },
+    cacheReadShort: { fr: "Cache read", en: "Cache read" },
+    total: { fr: "Total", en: "Total" },
+    context: { fr: "Contexte", en: "Context" },
+    messages: { fr: "Messages", en: "Messages" },
+    activeDuration: { fr: "Durée active", en: "Active duration" },
+    lastActivity: { fr: "Dernière activité", en: "Last activity" },
+    folder: { fr: "Dossier", en: "Folder" },
+    branch: { fr: "Branche", en: "Branch" },
+    takeControl: { fr: "↩ Reprendre la main", en: "↩ Take control" },
+    copyResume: { fr: "Copier resume", en: "Copy resume" },
+    transcript: { fr: "Transcript", en: "Transcript" },
+    reveal: { fr: "Révéler", en: "Reveal" },
+    liveFeed: { fr: "Flux en direct", en: "Live feed" },
+    loading: { fr: "Chargement…", en: "Loading…" },
+    noEvents: { fr: "Aucun événement récent.", en: "No recent events." },
+    approxNote: { fr: "≈ transcript volumineux : coût calculé sur la partie récente.", en: "≈ large transcript: cost computed on the recent part." },
+    periodTitle: { fr: "Période de calcul tokens & coût", en: "Token & cost period" },
+  };
+  const PERIODS = [
+    { v: "session", fr: "Session (total)", en: "Session (total)" },
+    { v: "today", fr: "Aujourd'hui", en: "Today" },
+    { v: "24h", fr: "24 h", en: "24h" },
+    { v: "7d", fr: "7 jours", en: "7d" },
+    { v: "1h", fr: "1 h", en: "1h" },
+  ];
+  function t(key) { return (I18N[key] && I18N[key][lang]) || (I18N[key] && I18N[key].en) || key; }
+  function periodLabel(v) { const p = PERIODS.find((x) => x.v === v) || PERIODS[0]; return p[lang] || p.en; }
+
+  // localize the few fixed French phrases produced by the parser (host side)
+  function loc(s) {
+    if (lang !== "en" || !s) return s;
+    return s
+      .replace(/^Résultat reçu$/, "Result received")
+      .replace(/^Terminé$/, "Done")
+      .replace(/^↩ résultat d'outil$/, "↩ tool result")
+      .replace(/^↳ Lance un agent · /, "↳ Launch agent · ");
   }
 
   // ---------- number tween ----------
@@ -147,7 +211,7 @@
     const act = el.querySelector(".cap-act");
     act.className = "cap-act " + node.activityKind;
     el.querySelector(".ca-ico").textContent = actIcon(node.status === "done" ? "done" : node.activityKind);
-    el.querySelector(".ca-text").textContent = node.activity;
+    el.querySelector(".ca-text").textContent = loc(node.activity);
 
     if (node.kind === "hub") {
       el.querySelector(".cap-tag").textContent = "";
@@ -254,11 +318,9 @@
   function statusRank(n) { return n.status === "live" ? 0 : n.status === "idle" ? 1 : 2; }
 
   function setEmptyText() {
-    emptyEl.innerHTML =
-      '<div class="empty-glow"></div>' +
-      (showMode === "active"
-        ? "<p>Aucune session ouverte</p><span>Les sessions Claude Code en cours d'exécution apparaîtront ici, en direct. Bascule sur « Récentes » pour revoir les sessions inactives.</span>"
-        : "<p>Aucune session récente</p><span>Lance une session Claude Code — elle apparaîtra ici.</span>");
+    const title = showMode === "active" ? t("emptyActiveTitle") : t("emptyRecentTitle");
+    const desc = showMode === "active" ? t("emptyActiveDesc") : t("emptyRecentDesc");
+    emptyEl.innerHTML = '<div class="empty-glow"></div><p>' + esc(title) + "</p><span>" + esc(desc) + "</span>";
   }
 
   function hashStr(s) {
@@ -344,7 +406,7 @@
     // root "machine" hub, connecting all sessions
     const anyLive = sessions.some((s) => s.status === "live");
     const hub = {
-      id: HUB_ID, kind: "hub", title: "Ma machine", subtitle: "", activity: "",
+      id: HUB_ID, kind: "hub", title: t("myMachine"), subtitle: "", activity: "",
       activityKind: "idle", status: anyLive ? "live" : "idle", working: false,
       model: "", cost: { total: 0 },
       tokens: { input: 0, output: 0, cacheWrite5m: 0, cacheWrite1h: 0, cacheRead: 0 },
@@ -482,62 +544,62 @@
   }
 
   function buildDrawer(n) {
-    const t = n.tokens, c = n.cost;
+    const tk = n.tokens, c = n.cost;
     drawerContent.innerHTML = `
       <div class="d-title">${esc(n.title)}</div>
       <div class="d-sub">
         <span class="dot ${n.status}" id="d-dot"></span>
         <span class="chip model">${esc(shortModel(n.model))}</span>
-        <span class="chip agenttype">${esc(n.kind === "agent" ? n.subtitle : "session")}</span>
-        <span id="d-live" style="color:var(--green)${n.status === "live" ? "" : ";display:none"}">en direct</span>
+        <span class="chip agenttype">${esc(n.kind === "agent" ? n.subtitle : t("session"))}</span>
+        <span id="d-live" style="color:var(--green)${n.status === "live" ? "" : ";display:none"}">${esc(t("liveWord"))}</span>
       </div>
       <div class="d-section">
-        <h4>Activité</h4>
+        <h4>${esc(t("activity"))}</h4>
         <div class="b-activity ${n.activityKind}" id="d-act" style="font-size:12px">
           <span class="act-ico" id="d-act-ico">${actIcon(n.status === "done" ? "done" : n.activityKind)}</span>
-          <span class="act-text" id="d-act-text" style="white-space:normal">${esc(n.activity)}</span>
+          <span class="act-text" id="d-act-text" style="white-space:normal">${esc(loc(n.activity))}</span>
         </div>
       </div>
       <div class="d-section">
-        <h4>Coût API · ${esc(n.modelFamily)}</h4>
+        <h4>${esc(t("apiCost"))} · ${esc(n.modelFamily)} · ${esc(periodLabel(period))}</h4>
         <div class="d-grid">
-          <span class="k">Input</span><span class="v" id="d-c-in">${fmtCost(c.input)}</span>
-          <span class="k">Output</span><span class="v" id="d-c-out">${fmtCost(c.output)}</span>
-          <span class="k">Cache (écriture)</span><span class="v" id="d-c-cw">${fmtCost(c.cacheWrite)}</span>
-          <span class="k">Cache (lecture)</span><span class="v" id="d-c-cr">${fmtCost(c.cacheRead)}</span>
-          <span class="k d-total">Total</span><span class="v accent d-total" id="d-c-total">${n.approx ? "≈ " : ""}${fmtCost(c.total)}</span>
+          <span class="k">${esc(t("input"))}</span><span class="v" id="d-c-in">${fmtCost(c.input)}</span>
+          <span class="k">${esc(t("output"))}</span><span class="v" id="d-c-out">${fmtCost(c.output)}</span>
+          <span class="k">${esc(t("cacheWrite"))}</span><span class="v" id="d-c-cw">${fmtCost(c.cacheWrite)}</span>
+          <span class="k">${esc(t("cacheRead"))}</span><span class="v" id="d-c-cr">${fmtCost(c.cacheRead)}</span>
+          <span class="k d-total">${esc(t("total"))}</span><span class="v accent d-total" id="d-c-total">${n.approx ? "≈ " : ""}${fmtCost(c.total)}</span>
         </div>
-        ${n.approx ? '<div class="tail-empty" style="margin-top:7px">≈ transcript volumineux : coût calculé sur la partie récente.</div>' : ""}
+        ${n.approx ? '<div class="tail-empty" style="margin-top:7px">' + esc(t("approxNote")) + "</div>" : ""}
       </div>
       <div class="d-section">
-        <h4>Tokens</h4>
+        <h4>${esc(t("tokens"))}</h4>
         <div class="d-grid">
-          <span class="k">Input</span><span class="v" id="d-t-in">${fmtTokens(t.input)}</span>
-          <span class="k">Output</span><span class="v" id="d-t-out">${fmtTokens(t.output)}</span>
-          <span class="k">Cache write</span><span class="v" id="d-t-cw">${fmtTokens(t.cacheWrite5m + t.cacheWrite1h)}</span>
-          <span class="k">Cache read</span><span class="v" id="d-t-cr">${fmtTokens(t.cacheRead)}</span>
-          <span class="k d-total">Total</span><span class="v d-total" id="d-t-total">${fmtTokens(sumTokens(t))}</span>
+          <span class="k">${esc(t("input"))}</span><span class="v" id="d-t-in">${fmtTokens(tk.input)}</span>
+          <span class="k">${esc(t("output"))}</span><span class="v" id="d-t-out">${fmtTokens(tk.output)}</span>
+          <span class="k">${esc(t("cacheWriteShort"))}</span><span class="v" id="d-t-cw">${fmtTokens(tk.cacheWrite5m + tk.cacheWrite1h)}</span>
+          <span class="k">${esc(t("cacheReadShort"))}</span><span class="v" id="d-t-cr">${fmtTokens(tk.cacheRead)}</span>
+          <span class="k d-total">${esc(t("total"))}</span><span class="v d-total" id="d-t-total">${fmtTokens(sumTokens(tk))}</span>
         </div>
       </div>
       <div class="d-section">
-        <h4>Contexte</h4>
+        <h4>${esc(t("context"))}</h4>
         <div class="d-grid">
-          <span class="k">Messages</span><span class="v" id="d-msgs">${n.messageCount}</span>
-          <span class="k">Durée active</span><span class="v" id="d-dur">${durStr(n)}</span>
-          <span class="k">Dernière activité</span><span class="v" id="d-last">${timeAgo(n.lastTs)}</span>
-          <span class="k">Dossier</span><span class="v" style="font-size:11px">${esc(folderOf(n.cwd))}</span>
-          ${n.gitBranch ? `<span class="k">Branche</span><span class="v" style="font-size:11px">${esc(n.gitBranch)}</span>` : ""}
+          <span class="k">${esc(t("messages"))}</span><span class="v" id="d-msgs">${n.messageCount}</span>
+          <span class="k">${esc(t("activeDuration"))}</span><span class="v" id="d-dur">${durStr(n)}</span>
+          <span class="k">${esc(t("lastActivity"))}</span><span class="v" id="d-last">${timeAgo(n.lastTs)}</span>
+          <span class="k">${esc(t("folder"))}</span><span class="v" style="font-size:11px">${esc(folderOf(n.cwd))}</span>
+          ${n.gitBranch ? `<span class="k">${esc(t("branch"))}</span><span class="v" style="font-size:11px">${esc(n.gitBranch)}</span>` : ""}
         </div>
       </div>
       <div class="d-actions">
-        <button class="primary" id="act-resume">↩ Reprendre la main</button>
-        <button id="act-copy">Copier resume</button>
-        <button id="act-open">Transcript</button>
-        <button id="act-reveal">Révéler</button>
+        <button class="primary" id="act-resume">${esc(t("takeControl"))}</button>
+        <button id="act-copy">${esc(t("copyResume"))}</button>
+        <button id="act-open">${esc(t("transcript"))}</button>
+        <button id="act-reveal">${esc(t("reveal"))}</button>
       </div>
       <div class="d-section">
-        <h4>Flux en direct</h4>
-        <div class="tail" id="tail-list"><div class="tail-empty">Chargement…</div></div>
+        <h4>${esc(t("liveFeed"))}</h4>
+        <div class="tail" id="tail-list"><div class="tail-empty">${esc(t("loading"))}</div></div>
       </div>`;
     document.getElementById("act-resume").addEventListener("click", () =>
       vscode.postMessage({ type: "resume", sessionId: n.sessionId, cwd: n.cwd }));
@@ -556,7 +618,7 @@
     const live = document.getElementById("d-live"); if (live) live.style.display = n.status === "live" ? "" : "none";
     const act = document.getElementById("d-act"); if (act) act.className = "b-activity " + n.activityKind;
     set("d-act-ico", actIcon(n.status === "done" ? "done" : n.activityKind));
-    set("d-act-text", n.activity);
+    set("d-act-text", loc(n.activity));
     const c = n.cost, t = n.tokens;
     set("d-c-in", fmtCost(c.input)); set("d-c-out", fmtCost(c.output));
     set("d-c-cw", fmtCost(c.cacheWrite)); set("d-c-cr", fmtCost(c.cacheRead));
@@ -575,11 +637,11 @@
     const sig = nodeId + ":" + lines.length + ":" + (lines.length ? lines[lines.length - 1].ts : 0);
     if (list.dataset.sig === sig) return; // unchanged -> don't re-render (no flicker)
     list.dataset.sig = sig;
-    if (!lines.length) { list.innerHTML = '<div class="tail-empty">Aucun événement récent.</div>'; return; }
+    if (!lines.length) { list.innerHTML = '<div class="tail-empty">' + esc(t("noEvents")) + "</div>"; return; }
     list.innerHTML = lines.slice().reverse().map((l) => `
       <div class="tail-item">
         <div class="tl-head"><span class="tl-kind ${l.kind}">${l.kind}</span><span class="tl-time">${timeAgo(l.ts)}</span></div>
-        <div class="tl-body">${esc(l.text)}</div>
+        <div class="tl-body">${esc(loc(l.text))}</div>
       </div>`).join("");
   }
   setInterval(() => { if (selectedId) vscode.postMessage({ type: "requestTail", nodeId: selectedId }); }, 2500);
@@ -602,34 +664,77 @@
     document.getElementById("stat-live").textContent = a.live;
   }
 
-  document.getElementById("btn-new").addEventListener("click", () =>
-    vscode.postMessage({ type: "newSession", cwd: workspaceCwd }));
-
   const modeBtn = document.getElementById("mode-toggle");
-  if (modeBtn) {
-    modeBtn.addEventListener("click", () => {
-      showMode = showMode === "active" ? "recent" : "active";
-      modeBtn.textContent = showMode === "active" ? "Actives" : "Récentes";
-      modeBtn.classList.toggle("on", showMode === "active");
-      render();
-      updateStats();
-    });
+  const filterBtn = document.getElementById("filter-toggle");
+  const newBtn = document.getElementById("btn-new");
+  const langBtn = document.getElementById("lang-toggle");
+  const periodSel = document.getElementById("period");
+
+  // (re)apply all chrome strings for the current language
+  function applyI18n() {
+    document.getElementById("lbl-live").textContent = t("live");
+    document.getElementById("lbl-tokens").textContent = t("tokens");
+    document.getElementById("lbl-cost").textContent = t("cost") + " · " + periodLabel(period);
+    modeBtn.textContent = showMode === "active" ? t("active") : t("recent");
+    filterBtn.textContent = filterScope === "all" ? t("all") : t("thisProject");
+    newBtn.textContent = t("newSession");
+    langBtn.textContent = lang.toUpperCase();
+    periodSel.title = t("periodTitle");
+    // rebuild period options
+    const cur = period;
+    periodSel.innerHTML = PERIODS.map((p) => '<option value="' + p.v + '">' + esc(p[lang] || p.en) + "</option>").join("");
+    periodSel.value = cur;
   }
 
-  const filterBtn = document.getElementById("filter-toggle");
+  newBtn.addEventListener("click", () =>
+    vscode.postMessage({ type: "newSession", cwd: workspaceCwd }));
+
+  modeBtn.addEventListener("click", () => {
+    showMode = showMode === "active" ? "recent" : "active";
+    modeBtn.textContent = showMode === "active" ? t("active") : t("recent");
+    modeBtn.classList.toggle("on", showMode === "active");
+    render();
+    updateStats();
+  });
+
   filterBtn.addEventListener("click", () => {
     filterScope = filterScope === "all" ? "workspace" : "all";
-    filterBtn.textContent = filterScope === "all" ? "Tous" : "Ce projet";
+    filterBtn.textContent = filterScope === "all" ? t("all") : t("thisProject");
     filterBtn.classList.toggle("primary", filterScope === "workspace");
     render();
     updateStats();
   });
 
+  periodSel.addEventListener("change", () => {
+    period = periodSel.value;
+    document.getElementById("lbl-cost").textContent = t("cost") + " · " + periodLabel(period);
+    vscode.postMessage({ type: "setPeriod", period }); // host recomputes tokens/cost -> new state
+  });
+
+  langBtn.addEventListener("click", () => {
+    lang = lang === "fr" ? "en" : "fr";
+    vscode.postMessage({ type: "setLanguage", language: lang });
+    applyI18n();
+    if (selectedId) { drawerBuiltFor = null; syncDrawer(); }
+    render();
+    updateStats();
+  });
+
+  applyI18n();
+
   // ---------- messaging ----------
   window.addEventListener("message", (ev) => {
     const msg = ev.data;
     if (msg.type === "state") { state = msg.state; render(); updateStats(); }
-    else if (msg.type === "config") { workspaceCwd = msg.workspaceCwd; }
+    else if (msg.type === "config") {
+      workspaceCwd = msg.workspaceCwd;
+      if (msg.language && msg.language !== lang) lang = msg.language;
+      if (msg.period && msg.period !== period) period = msg.period;
+      applyI18n();
+      if (selectedId) { drawerBuiltFor = null; syncDrawer(); }
+      render();
+      updateStats();
+    }
     else if (msg.type === "tail") { renderTail(msg.nodeId, msg.lines); }
   });
 
