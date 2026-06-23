@@ -1,6 +1,6 @@
 {
   "name": "claude-agent-observatory",
-  "displayName": "Agent Observatory",
+  "displayName": "Claude Agent Observatory",
   "description": "See your Claude Code agents working — live. Sessions & sub-agents as animated characters, with live token usage and $ cost.",
   "version": "0.1.0",
   "publisher": "Anilito1",
