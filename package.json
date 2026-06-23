@@ -68,7 +68,7 @@
         "agentObservatory.projectsDir": {
           "type": "string",
           "default": "",
-          "description": "Chemin du dossier des projets Claude Code. Vide = ~/.claude/projects."
+          "description": "Path to the coding agent transcripts folder. Empty = default location in your home directory."
         },
         "agentObservatory.activeWindowMinutes": {
           "type": "number",
@@ -85,10 +85,10 @@
           "default": 1500,
           "description": "Intervalle de rafraîchissement (ms) du watcher de fichiers."
         },
-        "agentObservatory.claudeCommand": {
+        "agentObservatory.cliCommand": {
           "type": "string",
           "default": "claude",
-          "description": "Commande CLI Claude Code utilisée pour lancer / reprendre des sessions."
+          "description": "CLI command used to launch / resume sessions."
         },
         "agentObservatory.pricing": {
           "type": "object",

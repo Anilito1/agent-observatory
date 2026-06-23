@@ -19,7 +19,7 @@ export function activate(context: vscode.ExtensionContext): void {
   period = context.globalState.get<string>("period", "session");
   language = context.globalState.get<string>("language", "fr");
   launcher = new Launcher(() =>
-    vscode.workspace.getConfiguration("agentObservatory").get<string>("claudeCommand", "claude")
+    vscode.workspace.getConfiguration("agentObservatory").get<string>("cliCommand", "claude")
   );
 
   const handlers: WebviewHandlers = {
@@ -45,9 +45,9 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand("agentObservatory.newSession", async () => {
       const prompt = await vscode.window.showInputBox({
-        title: "Nouvelle session Claude Code",
-        prompt: "Message de départ (optionnel) — laisser vide pour ouvrir Claude interactif",
-        placeHolder: "ex: refactore le module auth…",
+        title: "New agent session",
+        prompt: "Starting message (optional) — leave empty to open an interactive session",
+        placeHolder: "e.g. refactor the auth module…",
       });
       if (prompt === undefined) return;
       launcher.newSession(prompt, workspaceCwd() || undefined);
