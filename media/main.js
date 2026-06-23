@@ -25,6 +25,9 @@
   const manualPos = new Map(); // id -> {x, y} when user-dragged
   const NODE_W = 150, SESSION_R = 33, AGENT_R = 23, HUB_R = 27;
   const HUB_ID = "__hub__";
+  const MEDIA = (typeof window !== "undefined" && window.__mediaBase) || "media";
+  // generated character clips per pose (others fall back to the SVG character)
+  const VIDEO_BY_POSE = { type: "working.mp4", sit: "chilling.mp4" };
 
   // little animated character drawn inside each orb (pose set via [data-pose])
   const AVATAR_SVG =
@@ -186,8 +189,9 @@
     el.dataset.id = node.id;
     el.style.transform = "translate3d(-9999px,-9999px,0)"; // hidden until first layout frame
     const inner = node.kind === "hub" ? HUB_SVG : AVATAR_SVG;
+    const vid = node.kind === "hub" ? "" : '<video class="orb-video" muted loop playsinline></video>';
     el.innerHTML =
-      '<div class="orb">' + inner + '</div>' +
+      '<div class="orb">' + vid + inner + "</div>" +
       '<div class="caption">' +
       '<div class="cap-title"></div>' +
       '<div class="cap-act"><span class="ca-ico"></span><span class="ca-text"></span></div>' +
@@ -206,7 +210,27 @@
       (node.working ? " working" : "") +
       (node.managed && node.kind === "session" ? " managed" : "") +
       (manualPos.has(node.id) ? " pinned" : "");
-    el.dataset.pose = poseOf(node);
+    const pose = poseOf(node);
+    el.dataset.pose = pose;
+
+    // video character for poses that have a clip; SVG fallback otherwise
+    const video = el.querySelector(".orb-video");
+    if (video) {
+      const orb = el.querySelector(".orb");
+      const vfile = VIDEO_BY_POSE[pose];
+      if (vfile) {
+        if (video.dataset.file !== vfile) {
+          video.src = MEDIA + "/avatars/" + vfile;
+          video.dataset.file = vfile;
+        }
+        orb.classList.add("has-video");
+        if (video.paused) video.play().catch(() => {});
+      } else {
+        orb.classList.remove("has-video");
+        if (!video.paused) video.pause();
+      }
+    }
+
     el.querySelector(".cap-title").textContent = node.title;
     const act = el.querySelector(".cap-act");
     act.className = "cap-act " + node.activityKind;

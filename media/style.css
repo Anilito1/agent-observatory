@@ -134,6 +134,15 @@ button.toggle.on::before {
 .node.dragging { z-index: 20; }
 .node.dragging .orb { cursor: grabbing; transform: scale(1.08); box-shadow: 0 16px 34px rgba(0,0,0,0.6), 0 0 0 2px rgba(111,207,151,0.6), 0 0 26px rgba(111,207,151,0.4); }
 
+/* video character clip (fills the orb as a circular porthole) */
+.orb { overflow: hidden; }
+.orb-video {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; border-radius: 50%; display: none; pointer-events: none;
+}
+.orb.has-video .orb-video { display: block; }
+.orb.has-video .avatar { display: none; }
+
 /* ---------- animated character inside the orb ---------- */
 .avatar { width: 84%; height: 84%; overflow: visible; }
 .avatar * { transform-box: fill-box; transform-origin: center; }

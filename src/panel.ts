@@ -22,9 +22,11 @@ export function buildHtml(webview: vscode.Webview, extensionUri: vscode.Uri): st
   const scriptUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, "media", "main.js")
   );
+  const mediaUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "media"));
   const csp = [
     `default-src 'none'`,
     `img-src ${webview.cspSource} https: data:`,
+    `media-src ${webview.cspSource}`,
     `style-src ${webview.cspSource} 'unsafe-inline'`,
     `font-src ${webview.cspSource}`,
     `script-src 'nonce-${nonce}'`,
@@ -76,6 +78,7 @@ export function buildHtml(webview: vscode.Webview, extensionUri: vscode.Uri): st
   </aside>
   <div id="scrim" class="scrim hidden"></div>
 
+  <script nonce="${nonce}">window.__mediaBase = "${mediaUri}";</script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
