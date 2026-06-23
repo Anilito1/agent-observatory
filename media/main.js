@@ -11,7 +11,9 @@
   let state = { nodes: [], summary: {}, workspaceCwd: null };
   let workspaceCwd = null;
   let filterScope = "all";
+  let showMode = "active"; // 'active' = only open/running sessions, 'recent' = include idle
   let selectedId = null;
+  let drawerBuiltFor = null; // node id the drawer DOM was built for (avoid rebuilding -> avoid tail flicker)
 
   const bubbleCache = new Map(); // id -> bubble element
   const groupCache = new Map(); // sessionId -> { group, head, agentsRow }
@@ -141,8 +143,10 @@
   function samePath(a, b) {
     return (a || "").replace(/[\\/]+$/, "").toLowerCase() === (b || "").replace(/[\\/]+$/, "").toLowerCase();
   }
-  function visibleNodes() {
+  function computeNodes() {
     let nodes = state.nodes;
+
+    // workspace filter
     if (filterScope === "workspace" && workspaceCwd) {
       const sessions = nodes.filter((n) => n.kind === "session" && samePath(n.cwd, workspaceCwd));
       const ids = new Set(sessions.map((s) => s.id));
@@ -150,9 +154,40 @@
         (n) => (n.kind === "session" && ids.has(n.id)) || (n.kind === "agent" && ids.has(n.parentId))
       );
     }
-    return nodes;
+
+    // a session counts as "open" if it is live itself OR has a live (working) agent
+    const liveAgentParents = new Set(
+      nodes.filter((n) => n.kind === "agent" && n.status === "live").map((n) => n.parentId)
+    );
+
+    if (showMode === "active") {
+      const openSessions = nodes.filter(
+        (n) => n.kind === "session" && (n.status === "live" || liveAgentParents.has(n.id))
+      );
+      const openIds = new Set(openSessions.map((s) => s.id));
+      const openAgents = nodes.filter(
+        (n) => n.kind === "agent" && n.status === "live" && openIds.has(n.parentId)
+      );
+      nodes = [...openSessions, ...openAgents];
+    }
+
+    // annotate: a session with a live agent is itself shown as live + working
+    return nodes.map((n) => {
+      if (n.kind === "session" && liveAgentParents.has(n.id)) {
+        return { ...n, status: "live", working: true };
+      }
+      return n;
+    });
   }
   function statusRank(n) { return n.status === "live" ? 0 : n.status === "idle" ? 1 : 2; }
+
+  function setEmptyText() {
+    emptyEl.innerHTML =
+      '<div class="empty-glow"></div>' +
+      (showMode === "active"
+        ? "<p>Aucune session ouverte</p><span>Les sessions Claude Code en cours d'exécution apparaîtront ici, en direct. Bascule sur « Récentes » pour revoir les sessions inactives.</span>"
+        : "<p>Aucune session récente</p><span>Lance une session Claude Code — elle apparaîtra ici.</span>");
+  }
 
   // ---------- DOM reconciliation (no full rebuild -> no flicker) ----------
   function placeInOrder(container, orderedEls) {
@@ -170,7 +205,7 @@
   }
 
   function render() {
-    const nodes = visibleNodes();
+    const nodes = computeNodes();
     const sessions = nodes
       .filter((n) => n.kind === "session")
       .sort((a, b) => statusRank(a) - statusRank(b) || b.lastTs - a.lastTs);
@@ -183,6 +218,7 @@
     }
 
     emptyEl.classList.toggle("hidden", sessions.length > 0);
+    if (sessions.length === 0) setEmptyText();
 
     const desiredBubbleIds = new Set(nodes.map((n) => n.id));
     const desiredSessionIds = new Set(sessions.map((s) => s.id));
@@ -226,7 +262,22 @@
     placeInOrder(bubblesEl, groupEls);
 
     requestAnimationFrame(drawLinks);
-    if (selectedId) refreshDrawer();
+    syncDrawer();
+  }
+
+  // Rebuild the drawer DOM only when the selected node changes; otherwise update
+  // live values in place so the "Flux en direct" list is never wiped (no flicker).
+  function syncDrawer() {
+    if (!selectedId) return;
+    const n = nodeById(selectedId);
+    if (!n) { closeDrawer(); return; }
+    if (drawerBuiltFor !== selectedId) {
+      buildDrawer(n);
+      drawerBuiltFor = selectedId;
+      vscode.postMessage({ type: "requestTail", nodeId: selectedId });
+    } else {
+      updateDrawerLive(n);
+    }
   }
 
   // ---------- connectors (reuse paths) ----------
@@ -237,7 +288,7 @@
     const ox = -sr.left + stageEl.scrollLeft;
     const oy = -sr.top + stageEl.scrollTop;
 
-    const nodes = visibleNodes();
+    const nodes = computeNodes();
     const present = new Set();
     for (const n of nodes) {
       if (n.kind !== "agent") continue;
@@ -275,67 +326,69 @@
   }
   function openDrawer(id) {
     selectedId = id;
+    drawerBuiltFor = null;
     drawerEl.classList.remove("hidden");
     scrimEl.classList.remove("hidden");
-    refreshDrawer();
-    vscode.postMessage({ type: "requestTail", nodeId: id });
+    syncDrawer();
   }
   function closeDrawer() {
     selectedId = null;
+    drawerBuiltFor = null;
     drawerEl.classList.add("hidden");
     scrimEl.classList.add("hidden");
   }
   document.getElementById("drawer-close").addEventListener("click", closeDrawer);
   scrimEl.addEventListener("click", closeDrawer);
 
-  function refreshDrawer() {
-    const n = nodeById(selectedId);
-    if (!n) { closeDrawer(); return; }
-    const t = n.tokens, c = n.cost;
+  function durStr(n) {
     const dur = n.lastTs && n.startedTs ? Math.max(0, n.lastTs - n.startedTs) : 0;
-    const durStr = dur > 60000 ? Math.round(dur / 60000) + " min" : dur > 0 ? Math.round(dur / 1000) + " s" : "—";
+    return dur > 60000 ? Math.round(dur / 60000) + " min" : dur > 0 ? Math.round(dur / 1000) + " s" : "—";
+  }
+
+  function buildDrawer(n) {
+    const t = n.tokens, c = n.cost;
     drawerContent.innerHTML = `
       <div class="d-title">${esc(n.title)}</div>
       <div class="d-sub">
-        <span class="dot ${n.status}"></span>
+        <span class="dot ${n.status}" id="d-dot"></span>
         <span class="chip model">${esc(shortModel(n.model))}</span>
         <span class="chip agenttype">${esc(n.kind === "agent" ? n.subtitle : "session")}</span>
-        ${n.status === "live" ? '<span style="color:var(--green)">en direct</span>' : ""}
+        <span id="d-live" style="color:var(--green)${n.status === "live" ? "" : ";display:none"}">en direct</span>
       </div>
       <div class="d-section">
         <h4>Activité</h4>
-        <div class="b-activity ${n.activityKind}" style="font-size:12px">
-          <span class="act-ico">${actIcon(n.status === "done" ? "done" : n.activityKind)}</span>
-          <span class="act-text" style="white-space:normal">${esc(n.activity)}</span>
+        <div class="b-activity ${n.activityKind}" id="d-act" style="font-size:12px">
+          <span class="act-ico" id="d-act-ico">${actIcon(n.status === "done" ? "done" : n.activityKind)}</span>
+          <span class="act-text" id="d-act-text" style="white-space:normal">${esc(n.activity)}</span>
         </div>
       </div>
       <div class="d-section">
         <h4>Coût API · ${esc(n.modelFamily)}</h4>
         <div class="d-grid">
-          <span class="k">Input</span><span class="v">${fmtCost(c.input)}</span>
-          <span class="k">Output</span><span class="v">${fmtCost(c.output)}</span>
-          <span class="k">Cache (écriture)</span><span class="v">${fmtCost(c.cacheWrite)}</span>
-          <span class="k">Cache (lecture)</span><span class="v">${fmtCost(c.cacheRead)}</span>
-          <span class="k d-total">Total</span><span class="v accent d-total">${n.approx ? "≈ " : ""}${fmtCost(c.total)}</span>
+          <span class="k">Input</span><span class="v" id="d-c-in">${fmtCost(c.input)}</span>
+          <span class="k">Output</span><span class="v" id="d-c-out">${fmtCost(c.output)}</span>
+          <span class="k">Cache (écriture)</span><span class="v" id="d-c-cw">${fmtCost(c.cacheWrite)}</span>
+          <span class="k">Cache (lecture)</span><span class="v" id="d-c-cr">${fmtCost(c.cacheRead)}</span>
+          <span class="k d-total">Total</span><span class="v accent d-total" id="d-c-total">${n.approx ? "≈ " : ""}${fmtCost(c.total)}</span>
         </div>
         ${n.approx ? '<div class="tail-empty" style="margin-top:7px">≈ transcript volumineux : coût calculé sur la partie récente.</div>' : ""}
       </div>
       <div class="d-section">
         <h4>Tokens</h4>
         <div class="d-grid">
-          <span class="k">Input</span><span class="v">${fmtTokens(t.input)}</span>
-          <span class="k">Output</span><span class="v">${fmtTokens(t.output)}</span>
-          <span class="k">Cache write</span><span class="v">${fmtTokens(t.cacheWrite5m + t.cacheWrite1h)}</span>
-          <span class="k">Cache read</span><span class="v">${fmtTokens(t.cacheRead)}</span>
-          <span class="k d-total">Total</span><span class="v d-total">${fmtTokens(sumTokens(t))}</span>
+          <span class="k">Input</span><span class="v" id="d-t-in">${fmtTokens(t.input)}</span>
+          <span class="k">Output</span><span class="v" id="d-t-out">${fmtTokens(t.output)}</span>
+          <span class="k">Cache write</span><span class="v" id="d-t-cw">${fmtTokens(t.cacheWrite5m + t.cacheWrite1h)}</span>
+          <span class="k">Cache read</span><span class="v" id="d-t-cr">${fmtTokens(t.cacheRead)}</span>
+          <span class="k d-total">Total</span><span class="v d-total" id="d-t-total">${fmtTokens(sumTokens(t))}</span>
         </div>
       </div>
       <div class="d-section">
         <h4>Contexte</h4>
         <div class="d-grid">
-          <span class="k">Messages</span><span class="v">${n.messageCount}</span>
-          <span class="k">Durée active</span><span class="v">${durStr}</span>
-          <span class="k">Dernière activité</span><span class="v">${timeAgo(n.lastTs)}</span>
+          <span class="k">Messages</span><span class="v" id="d-msgs">${n.messageCount}</span>
+          <span class="k">Durée active</span><span class="v" id="d-dur">${durStr(n)}</span>
+          <span class="k">Dernière activité</span><span class="v" id="d-last">${timeAgo(n.lastTs)}</span>
           <span class="k">Dossier</span><span class="v" style="font-size:11px">${esc(folderOf(n.cwd))}</span>
           ${n.gitBranch ? `<span class="k">Branche</span><span class="v" style="font-size:11px">${esc(n.gitBranch)}</span>` : ""}
         </div>
@@ -360,10 +413,32 @@
       vscode.postMessage({ type: "revealFolder", filePath: n.filePath }));
   }
 
+  // In-place live update of the open drawer (never touches the "Flux en direct" list).
+  function updateDrawerLive(n) {
+    const set = (id, v) => { const el = document.getElementById(id); if (el && el.textContent !== v) el.textContent = v; };
+    const dot = document.getElementById("d-dot"); if (dot) dot.className = "dot " + n.status;
+    const live = document.getElementById("d-live"); if (live) live.style.display = n.status === "live" ? "" : "none";
+    const act = document.getElementById("d-act"); if (act) act.className = "b-activity " + n.activityKind;
+    set("d-act-ico", actIcon(n.status === "done" ? "done" : n.activityKind));
+    set("d-act-text", n.activity);
+    const c = n.cost, t = n.tokens;
+    set("d-c-in", fmtCost(c.input)); set("d-c-out", fmtCost(c.output));
+    set("d-c-cw", fmtCost(c.cacheWrite)); set("d-c-cr", fmtCost(c.cacheRead));
+    set("d-c-total", (n.approx ? "≈ " : "") + fmtCost(c.total));
+    set("d-t-in", fmtTokens(t.input)); set("d-t-out", fmtTokens(t.output));
+    set("d-t-cw", fmtTokens(t.cacheWrite5m + t.cacheWrite1h)); set("d-t-cr", fmtTokens(t.cacheRead));
+    set("d-t-total", fmtTokens(sumTokens(t)));
+    set("d-msgs", String(n.messageCount));
+    set("d-dur", durStr(n)); set("d-last", timeAgo(n.lastTs));
+  }
+
   function renderTail(nodeId, lines) {
     if (nodeId !== selectedId) return;
     const list = document.getElementById("tail-list");
     if (!list) return;
+    const sig = nodeId + ":" + lines.length + ":" + (lines.length ? lines[lines.length - 1].ts : 0);
+    if (list.dataset.sig === sig) return; // unchanged -> don't re-render (no flicker)
+    list.dataset.sig = sig;
     if (!lines.length) { list.innerHTML = '<div class="tail-empty">Aucun événement récent.</div>'; return; }
     list.innerHTML = lines.slice().reverse().map((l) => `
       <div class="tail-item">
@@ -375,12 +450,13 @@
 
   // ---------- topbar ----------
   function aggStats() {
-    if (filterScope === "all") {
-      const s = state.summary || {};
-      return { cost: s.totalCost || 0, tok: s.totalTokens || 0, live: s.liveCount || 0 };
-    }
+    // always reflect what is actually shown (respects active/recent + workspace filters)
     let cost = 0, tok = 0, live = 0;
-    for (const n of visibleNodes()) { cost += n.cost.total; tok += sumTokens(n.tokens); if (n.status === "live") live++; }
+    for (const n of computeNodes()) {
+      cost += n.cost.total;
+      tok += sumTokens(n.tokens);
+      if (n.status === "live" && n.kind === "session") live++;
+    }
     return { cost, tok, live };
   }
   function updateStats() {
@@ -392,6 +468,18 @@
 
   document.getElementById("btn-new").addEventListener("click", () =>
     vscode.postMessage({ type: "newSession", cwd: workspaceCwd }));
+
+  const modeBtn = document.getElementById("mode-toggle");
+  if (modeBtn) {
+    modeBtn.addEventListener("click", () => {
+      showMode = showMode === "active" ? "recent" : "active";
+      modeBtn.textContent = showMode === "active" ? "Actives" : "Récentes";
+      modeBtn.classList.toggle("on", showMode === "active");
+      render();
+      updateStats();
+    });
+  }
+
   const filterBtn = document.getElementById("filter-toggle");
   filterBtn.addEventListener("click", () => {
     filterScope = filterScope === "all" ? "workspace" : "all";

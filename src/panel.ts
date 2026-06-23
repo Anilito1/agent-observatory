@@ -52,6 +52,7 @@ export function buildHtml(webview: vscode.Webview, extensionUri: vscode.Uri): st
         <div class="stat cost"><span class="stat-val" id="stat-cost">$0.00</span><span class="stat-label">coût API</span></div>
       </div>
       <div class="actions">
+        <button id="mode-toggle" class="toggle on" title="Actives uniquement / inclure les récentes inactives">Actives</button>
         <button id="filter-toggle" class="ghost" title="Basculer ce projet / tous">Tous</button>
         <button id="btn-new" class="primary" title="Lancer une nouvelle session">+ Session</button>
       </div>
