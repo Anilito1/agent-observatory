@@ -2,7 +2,7 @@ import { CostBreakdown, TokenTotals } from "./types";
 
 // USD per 1M tokens. Defaults follow Anthropic's published rate structure
 // (cache write 5m = 1.25x input, 1h = 2x input, cache read = 0.1x input).
-// Fully overridable via the `claudeFleet.pricing` setting.
+// Fully overridable via the `agentObservatory.pricing` setting.
 export interface ModelRate {
   input: number;
   output: number;

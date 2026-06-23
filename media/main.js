@@ -216,7 +216,7 @@
       '<div class="cap-meta">' +
       '<span class="cap-tag"></span>' +
       '<span class="cap-cost" data-val="0">$0.000</span>' +
-      '<span class="cap-managed hidden" title="Pilotée par Fleet">●</span>' +
+      '<span class="cap-managed hidden" title="Pilotée par Agent Observatory">●</span>' +
       "</div></div>";
     attachDrag(el, node.id);
     return el;

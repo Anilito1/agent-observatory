@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-// Manages Claude Code sessions launched / resumed from Fleet.
+// Manages Claude Code sessions launched / resumed from Agent Observatory.
 // "Taking control" of a session = opening `claude --resume <id>` in a terminal,
 // where the user can interrupt (Esc / Ctrl-C) or steer it interactively.
 export class Launcher {
@@ -26,7 +26,7 @@ export class Launcher {
 
   newSession(prompt?: string, cwd?: string): void {
     const term = vscode.window.createTerminal({
-      name: "Claude Fleet · session",
+      name: "Agent Observatory · session",
       cwd: cwd || vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
     });
     this.genericTerminals.add(term);
@@ -44,7 +44,7 @@ export class Launcher {
       return;
     }
     const term = vscode.window.createTerminal({
-      name: `Claude Fleet · ${sessionId.slice(0, 8)}`,
+      name: `Agent Observatory · ${sessionId.slice(0, 8)}`,
       cwd: cwd || vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
     });
     this.terminals.set(sessionId, term);

@@ -39,14 +39,14 @@ export function buildHtml(webview: vscode.Webview, extensionUri: vscode.Uri): st
   <meta http-equiv="Content-Security-Policy" content="${csp}" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="${styleUri}" rel="stylesheet" />
-  <title>Claude Fleet</title>
+  <title>Agent Observatory</title>
 </head>
 <body>
   <div id="app">
     <header id="topbar">
       <div class="brand">
         <span class="logo"></span>
-        <span class="brand-name">Claude Fleet</span>
+        <span class="brand-name">Agent Observatory</span>
       </div>
       <div class="stats">
         <div class="stat"><span class="stat-val" id="stat-live">0</span><span class="stat-label" id="lbl-live">live</span></div>
@@ -111,8 +111,8 @@ export function openPanel(
   handlers: WebviewHandlers
 ): vscode.WebviewPanel {
   const panel = vscode.window.createWebviewPanel(
-    "claudeFleet.panel",
-    "Claude Fleet",
+    "agentObservatory.panel",
+    "Agent Observatory",
     vscode.ViewColumn.Active,
     {
       enableScripts: true,

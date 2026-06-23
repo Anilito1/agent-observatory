@@ -1,6 +1,6 @@
 {
-  "name": "claude-fleet",
-  "displayName": "Claude Fleet — Sessions Monitor",
+  "name": "agent-observatory",
+  "displayName": "Agent Observatory — Sessions Monitor",
   "description": "Visualise en temps réel toutes tes sessions Claude Code et leurs sous-agents : bulles flottantes hiérarchiques, tokens et coût $ en direct, contrôle des sessions.",
   "version": "0.1.0",
   "publisher": "anilito1",
@@ -8,7 +8,7 @@
   "icon": "resources/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Anilito1/claude-fleet.git"
+    "url": "https://github.com/Anilito1/agent-observatory.git"
   },
   "engines": {
     "vscode": "^1.85.0"
@@ -21,75 +21,75 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "claudeFleet",
-          "title": "Claude Fleet",
+          "id": "agentObservatory",
+          "title": "Agent Observatory",
           "icon": "resources/activity.svg"
         }
       ]
     },
     "views": {
-      "claudeFleet": [
+      "agentObservatory": [
         {
           "type": "webview",
-          "id": "claudeFleet.view",
-          "name": "Fleet",
+          "id": "agentObservatory.view",
+          "name": "Observatory",
           "icon": "resources/activity.svg"
         }
       ]
     },
     "commands": [
       {
-        "command": "claudeFleet.openPanel",
-        "title": "Claude Fleet: Ouvrir le moniteur (plein écran)",
+        "command": "agentObservatory.openPanel",
+        "title": "Agent Observatory: Ouvrir le moniteur (plein écran)",
         "icon": "$(window)"
       },
       {
-        "command": "claudeFleet.newSession",
-        "title": "Claude Fleet: Lancer une nouvelle session",
+        "command": "agentObservatory.newSession",
+        "title": "Agent Observatory: Lancer une nouvelle session",
         "icon": "$(add)"
       },
       {
-        "command": "claudeFleet.refresh",
-        "title": "Claude Fleet: Rafraîchir",
+        "command": "agentObservatory.refresh",
+        "title": "Agent Observatory: Rafraîchir",
         "icon": "$(refresh)"
       }
     ],
     "menus": {
       "view/title": [
-        { "command": "claudeFleet.openPanel", "when": "view == claudeFleet.view", "group": "navigation@1" },
-        { "command": "claudeFleet.newSession", "when": "view == claudeFleet.view", "group": "navigation@2" },
-        { "command": "claudeFleet.refresh", "when": "view == claudeFleet.view", "group": "navigation@3" }
+        { "command": "agentObservatory.openPanel", "when": "view == agentObservatory.view", "group": "navigation@1" },
+        { "command": "agentObservatory.newSession", "when": "view == agentObservatory.view", "group": "navigation@2" },
+        { "command": "agentObservatory.refresh", "when": "view == agentObservatory.view", "group": "navigation@3" }
       ]
     },
     "configuration": {
-      "title": "Claude Fleet",
+      "title": "Agent Observatory",
       "properties": {
-        "claudeFleet.projectsDir": {
+        "agentObservatory.projectsDir": {
           "type": "string",
           "default": "",
           "description": "Chemin du dossier des projets Claude Code. Vide = ~/.claude/projects."
         },
-        "claudeFleet.activeWindowMinutes": {
+        "agentObservatory.activeWindowMinutes": {
           "type": "number",
           "default": 180,
           "description": "Une session/agent modifié dans cette fenêtre (minutes) est considéré « récent » et affiché par défaut."
         },
-        "claudeFleet.liveWindowSeconds": {
+        "agentObservatory.liveWindowSeconds": {
           "type": "number",
           "default": 120,
           "description": "Une session/agent modifié dans cette fenêtre (secondes) est considéré « en direct » (pastille verte pulsée)."
         },
-        "claudeFleet.pollIntervalMs": {
+        "agentObservatory.pollIntervalMs": {
           "type": "number",
           "default": 1500,
           "description": "Intervalle de rafraîchissement (ms) du watcher de fichiers."
         },
-        "claudeFleet.claudeCommand": {
+        "agentObservatory.claudeCommand": {
           "type": "string",
           "default": "claude",
           "description": "Commande CLI Claude Code utilisée pour lancer / reprendre des sessions."
         },
-        "claudeFleet.pricing": {
+        "agentObservatory.pricing": {
           "type": "object",
           "default": {},
           "description": "Surcharge des tarifs ($ / 1M tokens) par famille de modèle. Ex: {\"opus\":{\"input\":15,\"output\":75,\"cacheWrite5m\":18.75,\"cacheWrite1h\":30,\"cacheRead\":1.5}}"

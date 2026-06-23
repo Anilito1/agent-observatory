@@ -19,7 +19,7 @@ export function activate(context: vscode.ExtensionContext): void {
   period = context.globalState.get<string>("period", "session");
   language = context.globalState.get<string>("language", "fr");
   launcher = new Launcher(() =>
-    vscode.workspace.getConfiguration("claudeFleet").get<string>("claudeCommand", "claude")
+    vscode.workspace.getConfiguration("agentObservatory").get<string>("claudeCommand", "claude")
   );
 
   const handlers: WebviewHandlers = {
@@ -34,16 +34,16 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const provider = new FleetViewProvider(context.extensionUri, handlers);
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider("claudeFleet.view", provider, {
+    vscode.window.registerWebviewViewProvider("agentObservatory.view", provider, {
       webviewOptions: { retainContextWhenHidden: true },
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("claudeFleet.openPanel", () => {
+    vscode.commands.registerCommand("agentObservatory.openPanel", () => {
       openPanel(context.extensionUri, handlers);
     }),
-    vscode.commands.registerCommand("claudeFleet.newSession", async () => {
+    vscode.commands.registerCommand("agentObservatory.newSession", async () => {
       const prompt = await vscode.window.showInputBox({
         title: "Nouvelle session Claude Code",
         prompt: "Message de départ (optionnel) — laisser vide pour ouvrir Claude interactif",
@@ -52,14 +52,14 @@ export function activate(context: vscode.ExtensionContext): void {
       if (prompt === undefined) return;
       launcher.newSession(prompt, workspaceCwd() || undefined);
     }),
-    vscode.commands.registerCommand("claudeFleet.refresh", () => watcher?.forceRefresh())
+    vscode.commands.registerCommand("agentObservatory.refresh", () => watcher?.forceRefresh())
   );
 
   startWatcher(context);
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration("claudeFleet")) {
+      if (e.affectsConfiguration("agentObservatory")) {
         watcher?.dispose();
         startWatcher(context);
       }
@@ -78,7 +78,7 @@ function workspaceCwd(): string | null {
 }
 
 function startWatcher(context: vscode.ExtensionContext): void {
-  const cfg = vscode.workspace.getConfiguration("claudeFleet");
+  const cfg = vscode.workspace.getConfiguration("agentObservatory");
   const projectsDir = cfg.get<string>("projectsDir") || defaultProjectsDir();
   const pricing = new Pricing(cfg.get<Record<string, any>>("pricing") || {});
 

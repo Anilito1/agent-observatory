@@ -40,7 +40,7 @@ export interface FleetNode {
   gitBranch: string;
   sessionId: string; // the owning top-level session id (for resume)
   filePath: string; // transcript path
-  managed: boolean; // launched / resumed by Fleet -> controllable terminal
+  managed: boolean; // launched / resumed by Agent Observatory -> controllable terminal
   approx: boolean; // cost/tokens are partial (very large transcript read from tail only)
 }
 
