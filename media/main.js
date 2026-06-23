@@ -24,6 +24,7 @@
   let layoutById = new Map();
   let linksOffL = 0, linksOffT = 0; // cached at render time (avoid per-frame layout reads)
   const manualPos = new Map(); // id -> {x, y} when user-dragged
+  const failedMedia = new Set(); // clip files that failed to load -> fall back to the SVG character
   const NODE_W = 150, SESSION_R = 33, AGENT_R = 23, HUB_R = 27;
   const HUB_ID = "__hub__";
   const MEDIA = (typeof window !== "undefined" && window.__mediaBase) || "media";
@@ -218,6 +219,14 @@
       '<span class="cap-cost" data-val="0">$0.000</span>' +
       '<span class="cap-managed hidden" title="Pilotée par Agent Observatory">●</span>' +
       "</div></div>";
+    const mediaEl = el.querySelector(".orb-video");
+    if (mediaEl) {
+      mediaEl.addEventListener("error", () => {
+        if (mediaEl.dataset.file) failedMedia.add(mediaEl.dataset.file);
+        const o = el.querySelector(".orb");
+        if (o) o.classList.remove("has-video"); // reveal the SVG character instead
+      });
+    }
     attachDrag(el, node.id);
     return el;
   }
@@ -236,14 +245,14 @@
     if (media) {
       const orb = el.querySelector(".orb");
       const vfile = VIDEO_BY_POSE[pose];
-      if (vfile) {
+      if (vfile && !failedMedia.has(vfile)) {
         if (media.dataset.file !== vfile) {
           media.src = MEDIA + "/avatars/" + vfile;
           media.dataset.file = vfile;
         }
         orb.classList.add("has-video");
       } else {
-        orb.classList.remove("has-video");
+        orb.classList.remove("has-video"); // no clip (or it failed) -> SVG character
       }
     }
 
