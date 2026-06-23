@@ -76,7 +76,7 @@
         },
         "claudeFleet.liveWindowSeconds": {
           "type": "number",
-          "default": 30,
+          "default": 120,
           "description": "Une session/agent modifié dans cette fenêtre (secondes) est considéré « en direct » (pastille verte pulsée)."
         },
         "claudeFleet.pollIntervalMs": {

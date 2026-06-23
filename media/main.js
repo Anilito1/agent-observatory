@@ -95,15 +95,11 @@
         ${node.kind === "agent" ? '<span class="chip agenttype"></span>' : ""}
         <span class="chip model"></span>
         <span class="b-spacer"></span>
+        <span class="managed-dot hidden" title="Pilotée par Fleet"></span>
         <span class="b-cost" data-val="0">$0.000</span>
       </div>
       <div class="b-title"></div>
       <div class="b-activity"><span class="act-ico"></span><span class="act-text"></span></div>
-      <div class="b-foot">
-        <span class="tok" data-val="0">0</span>
-        <span class="sep">·</span><span class="msgs"></span>
-        <span class="sep">·</span><span class="seen"></span>
-      </div>
       <div class="work-bar"></div>`;
     el.addEventListener("click", () => openDrawer(node.id));
     return el;
@@ -126,24 +122,12 @@
     el.querySelector(".act-ico").textContent = actIcon(node.status === "done" ? "done" : node.activityKind);
     el.querySelector(".act-text").textContent = node.activity;
 
-    el.querySelector(".msgs").textContent = node.messageCount + " msg";
-    el.querySelector(".seen").textContent = timeAgo(node.lastTs);
-
     const costEl = el.querySelector(".b-cost");
     costEl.classList.toggle("approx", !!node.approx);
     costEl.title = node.approx ? "Coût partiel (transcript volumineux lu depuis la fin)" : "";
     tween(costEl, node.cost.total, fmtCost);
-    tween(el.querySelector(".tok"), sumTokens(node.tokens), fmtTokens);
 
-    let badge = el.querySelector(".badge-managed");
-    if (node.managed && node.kind === "session") {
-      if (!badge) {
-        badge = document.createElement("span");
-        badge.className = "badge-managed";
-        badge.textContent = "pilotée";
-        el.querySelector(".b-foot").appendChild(badge);
-      }
-    } else if (badge) badge.remove();
+    el.querySelector(".managed-dot").classList.toggle("hidden", !(node.managed && node.kind === "session"));
   }
 
   function ensureBubble(node) {
@@ -427,12 +411,6 @@
 
   window.addEventListener("resize", () => requestAnimationFrame(drawLinks));
   stageEl.addEventListener("scroll", () => requestAnimationFrame(drawLinks));
-  setInterval(() => {
-    for (const [id, el] of bubbleCache.entries()) {
-      const n = nodeById(id);
-      if (n) el.querySelector(".seen").textContent = timeAgo(n.lastTs);
-    }
-  }, 5000);
 
   vscode.postMessage({ type: "ready" });
 })();

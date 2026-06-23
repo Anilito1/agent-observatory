@@ -79,7 +79,7 @@ function startWatcher(context: vscode.ExtensionContext): void {
   watcher = new FleetWatcher({
     projectsDir,
     activeWindowMinutes: cfg.get<number>("activeWindowMinutes", 180),
-    liveWindowSeconds: cfg.get<number>("liveWindowSeconds", 30),
+    liveWindowSeconds: cfg.get<number>("liveWindowSeconds", 120),
     pollIntervalMs: cfg.get<number>("pollIntervalMs", 1500),
     maxInitialBytes: 12 * 1024 * 1024,
     pricing,

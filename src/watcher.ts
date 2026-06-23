@@ -114,8 +114,18 @@ export class FleetWatcher {
         if (!e.isFile() || !e.name.endsWith(".jsonl")) continue;
         const filePath = path.join(proj, e.name);
         const sessionId = e.name.replace(/\.jsonl$/, "");
+
+        // Is this session recent enough to display? (gates whether we pull its agents)
+        let sessionRecent = false;
+        try {
+          sessionRecent = fs.statSync(filePath).mtimeMs >= activeCutoff;
+        } catch {
+          continue;
+        }
         this.consider(filePath, "session", sessionId, null, undefined, undefined, activeCutoff);
 
+        // A visible session shows its FULL agent tree, regardless of each agent's age.
+        if (!sessionRecent) continue;
         const subDir = path.join(proj, sessionId, "subagents");
         if (fs.existsSync(subDir)) {
           let subs: string[] = [];
@@ -128,7 +138,7 @@ export class FleetWatcher {
             const agentPath = path.join(subDir, sn);
             const agentId = sn.replace(/\.jsonl$/, "").replace(/^agent-/, "");
             const meta = readMeta(path.join(subDir, sn.replace(/\.jsonl$/, ".meta.json")));
-            this.consider(agentPath, "agent", sessionId, sessionId, agentId, meta, activeCutoff);
+            this.consider(agentPath, "agent", sessionId, sessionId, agentId, meta, Number.NEGATIVE_INFINITY);
           }
         }
       }
@@ -250,11 +260,6 @@ export class FleetWatcher {
   private emit(): void {
     const managed = this.opts.managedSessionIds();
     const nodes: FleetNode[] = [];
-    let totalCost = 0;
-    let totalTokens = 0;
-    let liveCount = 0;
-    let sessionCount = 0;
-    let agentCount = 0;
 
     for (const t of this.trackers.values()) {
       const agg = t.agg;
@@ -262,7 +267,6 @@ export class FleetWatcher {
 
       const status = this.statusOf(t.mtimeMs, agg.lastTs);
       const cost = this.opts.pricing.cost(agg.model, agg.tokens);
-      const tokens = sumTokens(agg.tokens);
       const isAgent = t.kind === "agent";
       const folder = (agg.cwd || "").split(/[\\/]/).filter(Boolean).pop() || "";
 
@@ -304,17 +308,30 @@ export class FleetWatcher {
         approx: agg.capped,
       };
       nodes.push(node);
-      totalCost += cost.total;
-      totalTokens += tokens;
-      if (status === "live") liveCount++;
-      if (isAgent) agentCount++;
-      else sessionCount++;
     }
 
-    const sessionIds = new Set(nodes.filter((n) => n.kind === "session").map((n) => n.id));
-    const filtered = nodes.filter(
-      (n) => n.kind === "session" || sessionIds.has(n.parentId || "") || n.messageCount > 0
+    // Show recent (non-"done") sessions + their FULL agent tree (any agent age).
+    const shownSessionIds = new Set(
+      nodes.filter((n) => n.kind === "session" && n.status !== "done").map((n) => n.id)
     );
+    const filtered = nodes.filter(
+      (n) =>
+        (n.kind === "session" && shownSessionIds.has(n.id)) ||
+        (n.kind === "agent" && shownSessionIds.has(n.parentId || ""))
+    );
+
+    let totalCost = 0;
+    let totalTokens = 0;
+    let liveCount = 0;
+    let sessionCount = 0;
+    let agentCount = 0;
+    for (const n of filtered) {
+      totalCost += n.cost.total;
+      totalTokens += sumTokens(n.tokens);
+      if (n.status === "live") liveCount++;
+      if (n.kind === "agent") agentCount++;
+      else sessionCount++;
+    }
 
     const summary: FleetSummary = { totalCost, totalTokens, liveCount, sessionCount, agentCount };
     this.opts.onState({
